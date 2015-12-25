@@ -168,6 +168,10 @@ GetTimeTaken <- function(x,y,z, format = "%Y-%m-%d %H:%M:%S", mintime = 3){
               "MinTime" = mintime))
 }
 
+catlimit <- function(..., limit = TRUE){
+  cat(..., fill = limit)
+}
+
 numAnalysisDF <- function(x){
   numData <- x[sapply(x,is.numeric)]
   names(numData) <- fixNames(numData)
