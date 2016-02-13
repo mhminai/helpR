@@ -154,6 +154,7 @@ RespSD <- function(x,minsd = 0.35){
 # $LessThanMin : Respondents that took less than mintime (default = 3)
 # $MinTime     : Defined minimum time
 GetTimeTaken <- function(x,y,z, format = "%Y-%m-%d %H:%M:%S", mintime = 3){
+  require(pander)
   TimeStarted <- strptime(x[,y], format = format)
   TimeEnded   <- strptime(x[,z], format = format)
   TimeTaken   <- as.numeric(TimeEnded - TimeStarted, units = "mins")
@@ -163,6 +164,13 @@ GetTimeTaken <- function(x,y,z, format = "%Y-%m-%d %H:%M:%S", mintime = 3){
   } else {
     LessThanMin <- "None"
   }
+  catlimit("Average time taken:", mean(TimeTaken))
+  catlimit("Minimum time taken:", min(TimeTaken))
+  if(numLessThanMin != 0) {
+    catlimit(paste0("Some respondents have taken less than ", mintime, " minutes to complete the survey. This could be an anomaly or random responses. You could consider removing these respondents."))
+    catlimit("Time taken (in minutes) by these respondents was: ", pandoc.list.return(TimeTaken[LessThanMin]))
+  }
+
   return(list("StartTime" = TimeStarted, "EndTime" = TimeEnded,
               "TimeTaken" = TimeTaken, "LessThanMin" = LessThanMin,
               "MinTime" = mintime))
@@ -172,34 +180,47 @@ catlimit <- function(..., limit = TRUE){
   cat(..., fill = limit)
 }
 
+# Return dataframe with only the numeric data
+# Useful for using scoreItems from psych package
+GetNumericData <- function(x){
+    return(x[sapply(x,is.numeric)])
+}
+
+# Write comments
 numAnalysisDF <- function(x){
-  numData <- x[sapply(x,is.numeric)]
+  require(pander)
+  require(psych)
+
+  numData <- GetNumericData(x)
   names(numData) <- fixNames(numData)
   colsWithNA <- checkNA(numData)
+  cat("\nMISSING VALUE TEST")
+  cat("\n------------------")
   if(sum(colsWithNA) == 0){
-    print("Numeric Data do not contain any missing values")
+    catlimit("\nNumeric Data do not contain any missing values")
   } else {
-    print("Numeric Data contains missing values")
-    print("Number of missing values for each variable is given below")
-    print("Missing values would be ignored for subsequent analysis")
-    print(colsWithNA)
+    catlimit("\nNumeric Data contains missing values. Missing values would be ignored for subsequent analysis. Number of missing values for each variable is given below:")
+    pander(colsWithNA, style = "rmarkdown")
   }
+  cat("\nAUTOCORRELATION TEST")
+  cat("\n--------------------")
   drops <- checkACFVar(numData)
-  print("The following variable(s) have an autocorrelation at a lag of 1 of more than 0.8")
-  print("These might be sequence or ID type of variables,")
-  print("They will be excluded from further analysis")
-  print(paste0("Variables excluded: ",drops))
+  catlimit("\nThe following variable(s) have an autocorrelation at a lag of 1 of more than 0.8. These might be sequence or ID type of variables, they will be excluded from further analysis.")
+  catlimit(paste0("Variables excluded: ", pandoc.list.return(drops)))
   numData <- numData[!names(numData) %in% drops]
+
+  cat("\nVARIANCE TEST")
+  cat("\n-------------")
   lowVarResp <- RespSD(numData)
-  print(paste0("The following respondents have very little variance (< ", as.character(lowVarResp$Threshold), ")"))
-  print("in their responses, without accounting for missing values")
-  print("This could be a case of disinterest, consider removing these respondents")
-  print(lowVarResp$RespsWithLowSD)
-  
+  catlimit(paste0("\nThe following respondents have very little variance (< ", as.character(lowVarResp$Threshold), ")", " in their responses, without accounting for missing values. This could be a case of disinterest, consider removing these respondents."))
+  catlimit(paste0("Respondents with low variance: ", pandoc.list.return(lowVarResp$RespsWithLowSD)))
+
+  cat("\nDATA DESCRIPTION")
+  cat("\n----------------")
   DescData <- describe(numData)
-  print(paste0("Range of skewness of variables: ", range(DescData$skew)))
-  print(paste0("Range of kurtosis of variables: ", range(DescData$kurtosis)))
-  print(DescData)
+  catlimit(paste0("\nRange of skewness of variables: ", range(DescData$skew)))
+  catlimit(paste0("\nRange of kurtosis of variables: ", range(DescData$kurtosis)))
+  pander(DescData, style = "rmarkdown")
   #rm(list = c("drops","numData","DescData"))
   return(lowVarResp$RespsWithLowSD)
 }
