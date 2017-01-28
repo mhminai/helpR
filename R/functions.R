@@ -1,5 +1,25 @@
 #genv <- .GlobalEnv
 
+# Name: getOS
+# Tasks: Returns the guessed operating system from a variety of functions in R.
+#        Uses Sys.Info() and .Platform finally returns "osx", "windows" or "linux"
+# Example: os <- getOS()
+getOS <- function(){
+  sysinf <- Sys.info()
+  if (!is.null(sysinf)){
+    os <- sysinf['sysname']
+    if (os == 'Darwin')
+      os <- "osx"
+  } else { ## mystery machine
+    os <- .Platform$OS.type
+    if (grepl("^darwin", R.version$os))
+      os <- "osx"
+    if (grepl("linux-gnu", R.version$os))
+      os <- "linux"
+  }
+  tolower(os)
+}
+
 # Name: loadPkgs
 # Task: A function that takes a vector of names of packages, installs the ones
 #       that are missing, loads all the packages and returns a list of the 
